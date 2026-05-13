@@ -1,34 +1,32 @@
 import os, yfinance as yf, requests, numpy as np, datetime, math
-# TEMPORANEO - SOLO PER TEST!
-# VT costa circa ~100$, AGG costa circa ~75$
-# Adatta le quote al tuo capitale di 5000€
-H_VWCE = 40.0  # Quote di VT (ex VWCE)
-H_IBTM = 15.0  # Quote di AGG (ex IBTM)
+
+# --- CONFIGURAZIONE HARD CODED PER TEST ---
+# Quote approssimative per VT (Azionario) e AGG (Obbligazionario)
+H_VWCE = 40.0  
+H_IBTM = 15.0  
 CAPITAL = 5000.0
 INFLATION = 0.025
 TG_TOKEN = "8876010394:AAHK3wjlNm2DQfPDt1pgkPM73bTBjXmZa3A"
 TG_CHAT = "1103185363"
 GROQ_KEY = "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"
 
-
 def fetch_data():
     try:
-        # 1. Scarica dati azionari globali (Vanguard Total World Stock - VT)
-        # È l'alternativa più liquida e stabile a VWCE
+        # Usiamo VT (Vanguard Total World) e AGG (Aggregate Bond) che sono molto liquidi
+        print("Scaricando dati per VT...")
         v = yf.Ticker("VT").history(period="6mo")["Close"]
         
-        # 2. Scarica dati obbligazionari globali (iShares Global Aggregate Bond - AGG)
-        # Alternativa stabile a IBTM
+        print("Scaricando dati per AGG...")
         i = yf.Ticker("AGG").history(period="6mo")["Close"]
         
-        # 3. Allinea le date
+        # Allinea le date comuni
         common = v.index.intersection(i.index)
         
         if len(common) < 10:
             print(f"Errore: Solo {len(common)} giorni di dati sovrapposti.")
             return None, None
             
-        print(f"OK: Scaricati {len(common)} giorni di dati per VT e AGG.")
+        print(f"OK: Scaricati {len(common)} giorni di dati.")
         return v[common], i[common]
         
     except Exception as e:
@@ -39,13 +37,17 @@ def fetch_data():
 
 def calc_metrics(v, i):
     port = (v * H_VWCE) + (i * H_IBTM)
-    if len(port) < 10: 
-        print("Dati insufficienti")
+    if len(port) < 10:
+        print("Dati insufficienti per calcolo metriche")
         return None
     
     cur = port.iloc[-1]
     days = (port.index[-1] - port.index[0]).days or 1
+    
+    # Calcoli base
     ret = (cur / CAPITAL) - 1
+    # Evita errori matematici se days è piccolo o negativo
+    if days <= 0: days = 1 
     cagr = (1 + ret) ** (365/days) - 1
     real_cagr = (1 + cagr) / (1 + INFLATION) - 1
     
@@ -58,61 +60,61 @@ def calc_metrics(v, i):
     sharpe = (cagr - 0.03) / vol if vol > 0 else 0
     
     return {
-        "val": round(cur, 2), "ret": round(ret*100, 2),
-        "cagr": round(real_cagr*100, 2), "vol": round(vol*100, 2),
-        "dd": round(max_dd*100, 2), "sharpe": round(sharpe, 2),
+        "val": round(cur, 2), 
+        "ret": round(ret*100, 2),
+        "cagr": round(real_cagr*100, 2), 
+        "vol": round(vol*100, 2),
+        "dd": round(max_dd*100, 2), 
+        "sharpe": round(sharpe, 2),
         "days": days
     }
 
 def ai_report(m):
-    prompt = f"""Sei un analista finanziario socratico per uno studente di economia.
-Dati: Valore {m['val']}€ | Rend.Reale {m['cagr']}% | Vol {m['vol']}% | MaxDD {m['dd']}% | Sharpe {m['sharpe']} | Giorni {m['days']}
-Genera un report di 3 righe: 1) Sintesi stato 2) Valutazione rischio 3) Una domanda socratica per lo studio. Max 120 parole."""
+    prompt = f"""Sei un analista finanziario socratico.
+Dati: Valore {m['val']} | Rend.Reale {m['cagr']}% | Vol {m['vol']}% | MaxDD {m['dd']}% | Sharpe {m['sharpe']}
+Genera un report brevissimo (3 righe): 1) Sintesi 2) Rischio 3) Domanda socratica."""
+    
     try:
         res = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}], "max_tokens": 250, "temperature": 0.3}
+            json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}], "max_tokens": 150, "temperature": 0.3}
         )
         return res.json()["choices"][0]["message"]["content"]
     except Exception as e:
         print(f"Errore AI: {e}")
-        return "⚠️ AI offline. Verifica metriche manualmente."
+        return "⚠️ AI offline."
 
 def send(msg):
     try:
         url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
         payload = {"chat_id": TG_CHAT, "text": msg, "parse_mode": "Markdown"}
         r = requests.post(url, json=payload)
-        print(f"Telegram response: {r.status_code} - {r.text}")
+        print(f"Telegram Status: {r.status_code}")
     except Exception as e:
         print(f"Errore Telegram: {e}")
 
 def main():
-    print("DEBUG: Avvio bot con valori hardcoded")
+    print("Avvio bot...")
     v, i = fetch_data()
+    
     if v is None:
-        send("❌ Errore download dati di mercato.")
+        send("❌ Errore download dati di mercato. Controlla i log.")
         return
         
     m = calc_metrics(v, i)
     if not m:
-        send("⏳ Dati insufficienti per l'analisi (serve più storico).")
+        send("⏳ Dati insufficienti (serve più storico).")
         return
         
-    print(f"DEBUG: Valore portafoglio = {m['val']}")
-    print(f"DEBUG: Chiamata AI in corso...")
-    
     ai_text = ai_report(m)
-    print(f"DEBUG: Risposta AI ricevuta: {ai_text[:50]}...")
     
-    msg = f"📊 *Report Portafoglio - {datetime.date.today()}*\n\n"
-    msg += f"💰 Valore: *{m['val']}€*\n"
-    msg += f"📈 Rend.Reale: *{m['cagr']}%* | Vol: *{m['vol']}%*\n"
-    msg += f"📉 Max Drawdown: *{m['dd']}%* | Sharpe: *{m['sharpe']}*\n\n"
-    msg += f"🤖 *Analisi AI:*\n{ai_text}"
+    msg = f"📊 *Report Portafoglio*\n\n"
+    msg += f"💰 Valore: *{m['val']}*\n"
+    msg += f"📈 Reale: *{m['cagr']}%* | Vol: *{m['vol']}%*\n"
+    msg += f"📉 Drawdown: *{m['dd']}%*\n\n"
+    msg += f"🤖 *AI:* {ai_text}"
     
-    print(f"DEBUG: Messaggio finale:\n{msg}")
     send(msg)
     print("✅ Inviato")
 
