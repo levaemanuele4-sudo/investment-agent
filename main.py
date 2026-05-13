@@ -1,7 +1,6 @@
 import os, yfinance as yf, requests, numpy as np, datetime, math
 
 # --- CONFIGURAZIONE HARD CODED PER TEST ---
-# Quote approssimative per VT (Azionario) e AGG (Obbligazionario)
 H_VWCE = 40.0  
 H_IBTM = 15.0  
 CAPITAL = 5000.0
@@ -12,14 +11,12 @@ GROQ_KEY = "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"
 
 def fetch_data():
     try:
-        # Usiamo VT (Vanguard Total World) e AGG (Aggregate Bond) che sono molto liquidi
         print("Scaricando dati per VT...")
         v = yf.Ticker("VT").history(period="6mo")["Close"]
         
         print("Scaricando dati per AGG...")
         i = yf.Ticker("AGG").history(period="6mo")["Close"]
         
-        # Allinea le date comuni
         common = v.index.intersection(i.index)
         
         if len(common) < 10:
@@ -44,9 +41,7 @@ def calc_metrics(v, i):
     cur = port.iloc[-1]
     days = (port.index[-1] - port.index[0]).days or 1
     
-    # Calcoli base
     ret = (cur / CAPITAL) - 1
-    # Evita errori matematici se days è piccolo o negativo
     if days <= 0: days = 1 
     cagr = (1 + ret) ** (365/days) - 1
     real_cagr = (1 + cagr) / (1 + INFLATION) - 1
