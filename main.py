@@ -11,9 +11,21 @@ GROQ_KEY = "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"
 
 def fetch_data():
     try:
-        v = yf.Ticker("VWCE.MI").history(period="6mo")["Close"]
-        i = yf.Ticker("IBTM.MI").history(period="6mo")["Close"]
+        # Prova con i ticker globali (più affidabili)
+        v = yf.Ticker("VWCE.DE").history(period="6mo")["Close"]   # Xetra invece di Milano
+        i = yf.Ticker("IB01.L").history(period="6mo")["Close"]    # Londra invece di Milano
+        
+        # Se non funzionano, prova questi fallback:
+        if len(v) < 10:
+            v = yf.Ticker("IWDA.AS").history(period="6mo")["Close"]  # iShares Core MSCI World (Amsterdam)
+        if len(i) < 10:
+            i = yf.Ticker("AGGH.L").history(period="6mo")["Close"]   # iShares Global Govt Bond (Londra)
+        
         common = v.index.intersection(i.index)
+        if len(common) < 10:
+            print(f"Errore: solo {len(common)} giorni di dati comuni")
+            return None, None
+            
         return v[common], i[common]
     except Exception as e:
         print(f"Errore download dati: {e}")
