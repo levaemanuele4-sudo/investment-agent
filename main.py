@@ -1,3 +1,4 @@
+import os, yfinance as yf, requests, numpy as np, datetime, math
 # TEMPORANEO - SOLO PER TEST!
 # VT costa circa ~100$, AGG costa circa ~75$
 # Adatta le quote al tuo capitale di 5000€
