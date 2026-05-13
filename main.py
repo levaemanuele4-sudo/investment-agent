@@ -11,24 +11,28 @@ GROQ_KEY = "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"
 
 def fetch_data():
     try:
-        # Prova con i ticker globali (più affidabili)
-        v = yf.Ticker("VWCE.DE").history(period="6mo")["Close"]   # Xetra invece di Milano
-        i = yf.Ticker("IB01.L").history(period="6mo")["Close"]    # Londra invece di Milano
+        # 1. Scarica dati azionari globali (Vanguard Total World Stock - VT)
+        # È l'alternativa più liquida e stabile a VWCE
+        v = yf.Ticker("VT").history(period="6mo")["Close"]
         
-        # Se non funzionano, prova questi fallback:
-        if len(v) < 10:
-            v = yf.Ticker("IWDA.AS").history(period="6mo")["Close"]  # iShares Core MSCI World (Amsterdam)
-        if len(i) < 10:
-            i = yf.Ticker("AGGH.L").history(period="6mo")["Close"]   # iShares Global Govt Bond (Londra)
+        # 2. Scarica dati obbligazionari globali (iShares Global Aggregate Bond - AGG)
+        # Alternativa stabile a IBTM
+        i = yf.Ticker("AGG").history(period="6mo")["Close"]
         
+        # 3. Allinea le date
         common = v.index.intersection(i.index)
+        
         if len(common) < 10:
-            print(f"Errore: solo {len(common)} giorni di dati comuni")
+            print(f"Errore: Solo {len(common)} giorni di dati sovrapposti.")
             return None, None
             
+        print(f"OK: Scaricati {len(common)} giorni di dati per VT e AGG.")
         return v[common], i[common]
+        
     except Exception as e:
-        print(f"Errore download dati: {e}")
+        print(f"ERRORE CRITICO download dati: {e}")
+        import traceback
+        traceback.print_exc()
         return None, None
 
 def calc_metrics(v, i):
