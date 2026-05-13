@@ -17,3 +17,31 @@ GROQ_KEY = "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"
 # TG_TOKEN = os.getenv("TELEGRAM_TOKEN")
 # TG_CHAT = os.getenv("TELEGRAM_CHAT_ID")
 # GROQ_KEY = os.getenv("GROQ_API_KEY")
+
+def main():
+    v, i = fetch_data()
+    if v is None:
+        send("❌ Errore download dati di mercato.")
+        return
+        
+    m = calc_metrics(v, i)
+    if not m:
+        send("⏳ Dati insufficienti per l'analisi (serve più storico).")
+        return
+    
+    # DEBUG: stampa cosa sta succedendo
+    print(f"DEBUG: Valore portafoglio = {m['val']}")
+    print(f"DEBUG: Chiamata AI in corso...")
+    
+    ai_text = ai_report(m)
+    print(f"DEBUG: Risposta AI ricevuta: {ai_text[:50]}...")  # prime 50 chars
+    
+    msg = f"📊 *Report Portafoglio - {datetime.date.today()}*\n\n"
+    msg += f"💰 Valore: *{m['val']}€*\n"
+    msg += f"📈 Rend.Reale: *{m['cagr']}%* | Vol: *{m['vol']}%*\n"
+    msg += f"📉 Max Drawdown: *{m['dd']}%* | Sharpe: *{m['sharpe']}*\n\n"
+    msg += f"🤖 *Analisi AI:*\n{ai_text}"
+    
+    print(f"DEBUG: Messaggio finale:\n{msg}")
+    send(msg)
+    print("✅ Inviato")
