@@ -45,3 +45,7 @@ def main():
     print(f"DEBUG: Messaggio finale:\n{msg}")
     send(msg)
     print("✅ Inviato")
+
+if __name__ == "__main__":
+    print("DEBUG: Avvio bot con valori hardcoded")
+    main()
