@@ -1,8 +1,9 @@
 import os, yfinance as yf, requests, numpy as np, datetime, math
 
 # --- CONFIGURAZIONE HARD CODED PER TEST ---
-H_VWCE = 40.0  
-H_IBTM = 15.0  
+# Quote approssimative per VT (Azionario Globale) e AGG (Obbligazionario Globale)
+H_VWCE = 40.0  # Quote di VT
+H_IBTM = 15.0  # Quote di AGG
 CAPITAL = 5000.0
 INFLATION = 0.025
 TG_TOKEN = "8876010394:AAHK3wjlNm2DQfPDt1pgkPM73bTBjXmZa3A"
@@ -65,15 +66,25 @@ def calc_metrics(v, i):
     }
 
 def ai_report(m):
-    prompt = f"""Sei un analista finanziario socratico.
-Dati: Valore {m['val']} | Rend.Reale {m['cagr']}% | Vol {m['vol']}% | MaxDD {m['dd']}% | Sharpe {m['sharpe']}
-Genera un report brevissimo (3 righe): 1) Sintesi 2) Rischio 3) Domanda socratica."""
+    # Prompt ottimizzato per sintesi e relazione con il profilo utente
+    prompt = f"""Sei l'assistente finanziario personale di Ema, studente di economia.
+Profilo: Orizzonte lungo, tollera oscillazioni ±15%, obiettivo battere inflazione.
+Dati Attuali:
+- Valore: {m['val']}€
+- Rend. Reale Annuo: {m['cagr']}%
+- Volatilità: {m['vol']}%
+- Max Drawdown: {m['dd']}%
+
+Genera un report STRICTAMENTE in questo formato (max 3 righe totali):
+1. STATO: [Positivo/Negativo/Neutro] - Breve motivo legato all'inflazione.
+2. RISCHIO: La volatilità ({m['vol']}%) è dentro la tua tolleranza?
+3. DOMANDA: Una domanda socratica breve su un concetto economico (es. risk premium, duration)."""
     
     try:
         res = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}], "max_tokens": 150, "temperature": 0.3}
+            json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}], "max_tokens": 120, "temperature": 0.2}
         )
         return res.json()["choices"][0]["message"]["content"]
     except Exception as e:
@@ -104,11 +115,11 @@ def main():
         
     ai_text = ai_report(m)
     
-    msg = f"📊 *Report Portafoglio*\n\n"
-    msg += f"💰 Valore: *{m['val']}*\n"
+    msg = f"📊 *Report Ema - {datetime.date.today()}*\n\n"
+    msg += f"💰 Valore: *{m['val']}€*\n"
     msg += f"📈 Reale: *{m['cagr']}%* | Vol: *{m['vol']}%*\n"
     msg += f"📉 Drawdown: *{m['dd']}%*\n\n"
-    msg += f"🤖 *AI:* {ai_text}"
+    msg += f"🤖 *Analisi:*\n{ai_text}"
     
     send(msg)
     print("✅ Inviato")
