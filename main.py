@@ -1,13 +1,14 @@
-import os, yfinance as yf, requests, numpy as np, datetime, math
-
-# TEMPORANEO - SOLO PER TEST! (rimuovi dopo aver verificato)
-H_VWCE = 4000.0
-H_IBTM = 1000.0
+# TEMPORANEO - SOLO PER TEST!
+# VT costa circa ~100$, AGG costa circa ~75$
+# Adatta le quote al tuo capitale di 5000€
+H_VWCE = 40.0  # Quote di VT (ex VWCE)
+H_IBTM = 15.0  # Quote di AGG (ex IBTM)
 CAPITAL = 5000.0
 INFLATION = 0.025
 TG_TOKEN = "8876010394:AAHK3wjlNm2DQfPDt1pgkPM73bTBjXmZa3A"
 TG_CHAT = "1103185363"
 GROQ_KEY = "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"
+
 
 def fetch_data():
     try:
